@@ -2,7 +2,7 @@
 #[cfg(feature = "stacktrace")]
 use backtrace::Backtrace;
 use beef::lean::Cow;
-use minstant::Instant;
+use minstant::{Instant, Anchor};
 
 /// Span log builder.
 #[derive(Debug)]
