@@ -740,7 +740,7 @@ mod tests {
     use crate::sampler::AllSampler;
     use crate::Tracer;
 
-    use minstant::{Instant, Anchor};
+    use minstant::{Anchor, Instant};
 
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
