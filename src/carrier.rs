@@ -1,6 +1,7 @@
 //! Traits for representing carriers that propagate span contexts across process boundaries.
 use crate::span::SpanContext;
 use crate::Result;
+
 use std::collections::{BTreeMap, HashMap};
 use std::hash::{BuildHasher, Hash};
 use std::io::{Read, Write};
@@ -36,10 +37,12 @@ pub trait TextMap {
     /// Gets the value of `key'.
     fn get(&self, key: &str) -> Option<&str>;
 }
+
 impl<S: BuildHasher> TextMap for HashMap<String, String, S> {
     fn set(&mut self, key: &str, value: &str) {
         self.insert(key.to_owned(), value.to_owned());
     }
+
     fn get(&self, key: &str) -> Option<&str> {
         self.get(key).map(|v| v.as_ref())
     }
@@ -48,6 +51,7 @@ impl TextMap for BTreeMap<String, String> {
     fn set(&mut self, key: &str, value: &str) {
         self.insert(key.to_owned(), value.to_owned());
     }
+
     fn get(&self, key: &str) -> Option<&str> {
         self.get(key).map(|v| v.as_ref())
     }

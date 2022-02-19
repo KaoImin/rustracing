@@ -5,9 +5,11 @@ use crate::log::{Log, LogBuilder, StdErrorLogFieldsBuilder};
 use crate::sampler::{AllSampler, Sampler};
 use crate::tag::{StdTag, Tag, TagValue};
 use crate::Result;
-use std::borrow::Cow;
+
+use beef::lean::Cow;
+use minstant::Instant;
+
 use std::io::{Read, Write};
-use std::time::SystemTime;
 
 /// Finished span receiver.
 pub type SpanReceiver<T> = crossbeam_channel::Receiver<FinishedSpan<T>>;
@@ -73,7 +75,7 @@ impl<T> Span<T> {
     /// Sets the start time of this span.
     pub fn set_start_time<F>(&mut self, f: F)
     where
-        F: FnOnce() -> SystemTime,
+        F: FnOnce() -> Instant,
     {
         if let Some(inner) = self.0.as_mut() {
             inner.start_time = f();
@@ -83,7 +85,7 @@ impl<T> Span<T> {
     /// Sets the finish time of this span.
     pub fn set_finish_time<F>(&mut self, f: F)
     where
-        F: FnOnce() -> SystemTime,
+        F: FnOnce() -> Instant,
     {
         if let Some(inner) = self.0.as_mut() {
             inner.finish_time = Some(f());
@@ -159,10 +161,12 @@ impl<T> Span<T> {
         if let Some(inner) = self.0.as_mut() {
             let mut builder = LogBuilder::new();
             f(&mut builder.error());
+            
             if let Some(log) = builder.finish() {
                 inner.logs.push(log);
             }
-            if inner.tags.iter().find(|x| x.name() == "error").is_none() {
+
+            if !inner.tags.iter().any(|x| x.name() == "error") {
                 inner.tags.push(StdTag::error());
             }
         }
@@ -190,7 +194,7 @@ impl<T> Span<T> {
 
     pub(crate) fn new(
         operation_name: Cow<'static, str>,
-        start_time: SystemTime,
+        start_time: Instant,
         references: Vec<SpanReference<T>>,
         tags: Vec<Tag>,
         state: T,
@@ -211,13 +215,14 @@ impl<T> Span<T> {
         Span(Some(inner))
     }
 }
+
 impl<T> Drop for Span<T> {
     fn drop(&mut self) {
         if let Some(inner) = self.0.take() {
             let finished = FinishedSpan {
                 operation_name: inner.operation_name,
                 start_time: inner.start_time,
-                finish_time: inner.finish_time.unwrap_or_else(SystemTime::now),
+                finish_time: inner.finish_time.unwrap_or_else(Instant::now),
                 references: inner.references,
                 tags: inner.tags,
                 logs: inner.logs,
@@ -227,6 +232,7 @@ impl<T> Drop for Span<T> {
         }
     }
 }
+
 impl<T> MaybeAsRef<SpanContext<T>> for Span<T> {
     fn maybe_as_ref(&self) -> Option<&SpanContext<T>> {
         self.context()
@@ -236,8 +242,8 @@ impl<T> MaybeAsRef<SpanContext<T>> for Span<T> {
 #[derive(Debug)]
 struct SpanInner<T> {
     operation_name: Cow<'static, str>,
-    start_time: SystemTime,
-    finish_time: Option<SystemTime>,
+    start_time: Instant,
+    finish_time: Option<Instant>,
     references: Vec<SpanReference<T>>,
     tags: Vec<Tag>,
     logs: Vec<Log>,
@@ -249,13 +255,14 @@ struct SpanInner<T> {
 #[derive(Debug)]
 pub struct FinishedSpan<T> {
     operation_name: Cow<'static, str>,
-    start_time: SystemTime,
-    finish_time: SystemTime,
+    start_time: Instant,
+    finish_time: Instant,
     references: Vec<SpanReference<T>>,
     tags: Vec<Tag>,
     logs: Vec<Log>,
     context: SpanContext<T>,
 }
+
 impl<T> FinishedSpan<T> {
     /// Returns the operation name of this span.
     pub fn operation_name(&self) -> &str {
@@ -263,12 +270,12 @@ impl<T> FinishedSpan<T> {
     }
 
     /// Returns the start time of this span.
-    pub fn start_time(&self) -> SystemTime {
+    pub fn start_time(&self) -> Instant {
         self.start_time
     }
 
     /// Returns the finish time of this span.
-    pub fn finish_time(&self) -> SystemTime {
+    pub fn finish_time(&self) -> Instant {
         self.finish_time
     }
 
@@ -304,6 +311,7 @@ pub struct SpanContext<T> {
     state: T,
     baggage_items: Vec<BaggageItem>,
 }
+
 impl<T> SpanContext<T> {
     /// Makes a new `SpanContext` instance.
     pub fn new(state: T, mut baggage_items: Vec<BaggageItem>) -> Self {
@@ -380,6 +388,7 @@ impl<T> SpanContext<T> {
         track!(T::extract_from_binary(carrier))
     }
 }
+
 impl<T> MaybeAsRef<SpanContext<T>> for SpanContext<T> {
     fn maybe_as_ref(&self) -> Option<&Self> {
         Some(self)
@@ -405,6 +414,7 @@ pub struct BaggageItem {
     name: String,
     value: String,
 }
+
 impl BaggageItem {
     /// Makes a new `BaggageItem` instance.
     pub fn new(name: &str, value: &str) -> Self {
@@ -432,6 +442,7 @@ pub enum SpanReference<T> {
     ChildOf(T),
     FollowsFrom(T),
 }
+
 impl<T> SpanReference<T> {
     /// Returns the span context state of this reference.
     pub fn span(&self) -> &T {
@@ -458,6 +469,7 @@ pub struct CandidateSpan<'a, T: 'a> {
     references: &'a [SpanReference<T>],
     baggage_items: &'a [BaggageItem],
 }
+
 impl<'a, T: 'a> CandidateSpan<'a, T> {
     /// Returns the tags of this span.
     pub fn tags(&self) -> &[Tag] {
@@ -479,7 +491,7 @@ impl<'a, T: 'a> CandidateSpan<'a, T> {
 #[derive(Debug)]
 pub struct StartSpanOptions<'a, S: 'a, T: 'a> {
     operation_name: Cow<'static, str>,
-    start_time: Option<SystemTime>,
+    start_time: Option<Instant>,
     tags: Vec<Tag>,
     references: Vec<SpanReference<T>>,
     baggage_items: Vec<BaggageItem>,
@@ -491,7 +503,7 @@ where
     S: Sampler<T>,
 {
     /// Sets the start time of this span.
-    pub fn start_time(mut self, time: SystemTime) -> Self {
+    pub fn start_time(mut self, time: Instant) -> Self {
         self.start_time = Some(time);
         self
     }
@@ -544,7 +556,7 @@ where
         let state = T::from(self.span());
         Span::new(
             self.operation_name,
-            self.start_time.unwrap_or_else(SystemTime::now),
+            self.start_time.unwrap_or_else(Instant::now),
             self.references,
             self.tags,
             state,
@@ -561,7 +573,7 @@ where
         }
         Span::new(
             self.operation_name,
-            self.start_time.unwrap_or_else(SystemTime::now),
+            self.start_time.unwrap_or_else(Instant::now),
             self.references,
             self.tags,
             state,

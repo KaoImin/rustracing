@@ -1,5 +1,6 @@
 //! Span tag.
-use std::borrow::Cow;
+use beef::lean::Cow;
+
 use std::net::{IpAddr, SocketAddr};
 
 /// Span tag.
@@ -8,6 +9,7 @@ pub struct Tag {
     name: Cow<'static, str>,
     value: TagValue,
 }
+
 impl Tag {
     /// # Examples
     ///
@@ -49,31 +51,55 @@ pub enum TagValue {
     Integer(i64),
     Float(f64),
 }
+
 impl From<&'static str> for TagValue {
     fn from(f: &'static str) -> Self {
-        TagValue::String(Cow::Borrowed(f))
+        TagValue::String(Cow::borrowed(f))
     }
 }
+
 impl From<String> for TagValue {
     fn from(f: String) -> Self {
-        TagValue::String(Cow::Owned(f))
+        TagValue::String(Cow::owned(f))
     }
 }
+
 impl From<Cow<'static, str>> for TagValue {
     fn from(f: Cow<'static, str>) -> Self {
         TagValue::String(f)
     }
 }
+
 impl From<bool> for TagValue {
     fn from(f: bool) -> Self {
         TagValue::Boolean(f)
     }
 }
+
 impl From<i64> for TagValue {
     fn from(f: i64) -> Self {
         TagValue::Integer(f)
     }
 }
+
+impl From<usize> for TagValue {
+    fn from(f: usize) -> Self {
+        TagValue::Integer(f as i64)
+    }
+}
+
+impl From<u32> for TagValue {
+    fn from(f: u32) -> Self {
+        TagValue::Integer(f as i64)
+    }
+}
+
+impl From<u64> for TagValue {
+    fn from(f: u64) -> Self {
+        TagValue::Integer(f as i64)
+    }
+}
+
 impl From<f64> for TagValue {
     fn from(f: f64) -> Self {
         TagValue::Float(f)
@@ -84,6 +110,7 @@ impl From<f64> for TagValue {
 /// [tags]: https://github.com/opentracing/specification/blob/master/semantic_conventions.md#span-tags-table
 #[derive(Debug)]
 pub struct StdTag;
+
 impl StdTag {
     /// Makes a `"component"` tag.
     ///

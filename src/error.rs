@@ -14,4 +14,5 @@ pub enum ErrorKind {
     /// Other errors (e.g., I/O error).
     Other,
 }
+
 impl TrackableErrorKind for ErrorKind {}

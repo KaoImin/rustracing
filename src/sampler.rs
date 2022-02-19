@@ -1,7 +1,9 @@
 //! `Sampler` trait and its built-in implementations.
 use crate::span::CandidateSpan;
 use crate::{ErrorKind, Result};
+
 use rand::{self, Rng};
+use trackable::{track_assert, track_panic};
 
 /// `Sampler` decides whether a new trace should be sampled or not.
 pub trait Sampler<T> {
@@ -38,6 +40,7 @@ impl<T> Sampler<T> for BoxSampler<T> {
     fn is_sampled(&self, span: &CandidateSpan<T>) -> bool {
         (**self).is_sampled(span)
     }
+
     fn boxed(self) -> BoxSampler<T>
     where
         Self: Sized + Send + 'static,
@@ -54,6 +57,7 @@ pub type BoxSampler<T> = Box<dyn Sampler<T> + Send + Sync + 'static>;
 pub struct ProbabilisticSampler {
     sampling_rate: f64,
 }
+
 impl ProbabilisticSampler {
     /// Makes a new `ProbabilisticSampler` instance.
     ///
@@ -67,6 +71,7 @@ impl ProbabilisticSampler {
         Ok(ProbabilisticSampler { sampling_rate })
     }
 }
+
 impl<T> Sampler<T> for ProbabilisticSampler {
     fn is_sampled(&self, _span: &CandidateSpan<T>) -> bool {
         rand::thread_rng().gen_range(0.0..1.0) < self.sampling_rate
@@ -76,6 +81,7 @@ impl<T> Sampler<T> for ProbabilisticSampler {
 /// This samples traces which have one or more references.
 #[derive(Debug, Clone)]
 pub struct PassiveSampler;
+
 impl<T> Sampler<T> for PassiveSampler {
     fn is_sampled(&self, span: &CandidateSpan<T>) -> bool {
         !span.references().is_empty()
@@ -85,6 +91,7 @@ impl<T> Sampler<T> for PassiveSampler {
 /// This samples no traces.
 #[derive(Debug, Clone)]
 pub struct NullSampler;
+
 impl<T> Sampler<T> for NullSampler {
     fn is_sampled(&self, _span: &CandidateSpan<T>) -> bool {
         false
@@ -94,6 +101,7 @@ impl<T> Sampler<T> for NullSampler {
 /// This samples all traces.
 #[derive(Debug, Clone)]
 pub struct AllSampler;
+
 impl<T> Sampler<T> for AllSampler {
     fn is_sampled(&self, _span: &CandidateSpan<T>) -> bool {
         true
@@ -103,6 +111,7 @@ impl<T> Sampler<T> for AllSampler {
 /// `or` combinator.
 #[derive(Debug, Clone)]
 pub struct OrSampler<A, B>(A, B);
+
 impl<A, B, T> Sampler<T> for OrSampler<A, B>
 where
     A: Sampler<T>,

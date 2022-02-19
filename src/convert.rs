@@ -5,6 +5,7 @@ pub trait MaybeAsRef<T: ?Sized> {
     /// Performs the conversion.
     fn maybe_as_ref(&self) -> Option<&T>;
 }
+
 impl<T, U> MaybeAsRef<T> for Option<U>
 where
     U: MaybeAsRef<T>,

@@ -1,6 +1,8 @@
 use crate::sampler::Sampler;
 use crate::span::{SpanReceiver, SpanSender, StartSpanOptions};
-use std::borrow::Cow;
+
+use beef::lean::Cow;
+
 use std::sync::Arc;
 
 /// Tracer.
@@ -24,6 +26,7 @@ pub struct Tracer<S, T> {
     sampler: Arc<S>,
     span_tx: SpanSender<T>,
 }
+
 impl<S: Sampler<T>, T> Tracer<S, T> {
     /// This constructor is mainly for backward compatibility, it has the same interface
     /// as in previous versions except the type of `SpanReceiver`.
@@ -50,6 +53,7 @@ impl<S: Sampler<T>, T> Tracer<S, T> {
         StartSpanOptions::new(operation_name, &self.span_tx, &self.sampler)
     }
 }
+
 impl<S, T> Tracer<S, T> {
     /// Clone with the given `sampler`.
     pub fn clone_with_sampler<U: Sampler<T>>(&self, sampler: U) -> Tracer<U, T> {
@@ -59,6 +63,7 @@ impl<S, T> Tracer<S, T> {
         }
     }
 }
+
 impl<S, T> Clone for Tracer<S, T> {
     fn clone(&self) -> Self {
         Tracer {

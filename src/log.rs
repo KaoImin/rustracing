@@ -1,15 +1,16 @@
 //! Span log.
 #[cfg(feature = "stacktrace")]
 use backtrace::Backtrace;
-use std::borrow::Cow;
-use std::time::SystemTime;
+use beef::lean::Cow;
+use minstant::Instant;
 
 /// Span log builder.
 #[derive(Debug)]
 pub struct LogBuilder {
     fields: Vec<LogField>,
-    time: Option<SystemTime>,
+    time: Option<Instant>,
 }
+
 impl LogBuilder {
     /// Adds the field.
     pub fn field<T: Into<LogField>>(&mut self, field: T) -> &mut Self {
@@ -18,7 +19,7 @@ impl LogBuilder {
     }
 
     /// Sets the value of timestamp to `time`.
-    pub fn time(&mut self, time: SystemTime) -> &mut Self {
+    pub fn time(&mut self, time: Instant) -> &mut Self {
         self.time = Some(time);
         self
     }
@@ -50,7 +51,7 @@ impl LogBuilder {
             self.fields.dedup_by(|a, b| a.name == b.name);
             Some(Log {
                 fields: self.fields,
-                time: self.time.unwrap_or_else(SystemTime::now),
+                time: self.time.unwrap_or_else(Instant::now),
             })
         }
     }
@@ -60,8 +61,9 @@ impl LogBuilder {
 #[derive(Debug, Clone)]
 pub struct Log {
     fields: Vec<LogField>,
-    time: SystemTime,
+    time: Instant,
 }
+
 impl Log {
     /// Returns the fields of this log.
     pub fn fields(&self) -> &[LogField] {
@@ -69,7 +71,7 @@ impl Log {
     }
 
     /// Returns the timestamp of this log.
-    pub fn time(&self) -> SystemTime {
+    pub fn time(&self) -> Instant {
         self.time
     }
 }
@@ -166,6 +168,7 @@ impl<'a> StdLogFieldsBuilder<'a> {
 /// [the standard error log fields]: https://github.com/opentracing/specification/blob/master/semantic_conventions.md#log-fields-table
 #[derive(Debug)]
 pub struct StdErrorLogFieldsBuilder<'a>(&'a mut LogBuilder);
+
 impl<'a> StdErrorLogFieldsBuilder<'a> {
     /// Adds the field `LogField::new("error.kind", kind)`.
     ///
